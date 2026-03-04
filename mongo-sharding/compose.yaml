@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # 1. Config Server (должен быть Replica Set)
+  configdb:
+    image: mongo:latest
+    container_name: configdb
+    command: mongod --configsvr --replSet configrs --port 27019 --bind_ip_all
+    volumes:
+      - configdb_data:/data/db
+    # Порт 27019 - стандарт для configsvr
+
+  # 2. Шард 1 (должен быть Replica Set)
+  shard1:
+    image: mongo:latest
+    container_name: shard1
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1_data:/data/db
+
+  # 3. Шард 2 (должен быть Replica Set)
+  shard2:
+    image: mongo:latest
+    container_name: shard2
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2_data:/data/db
+
+  # 4. Mongos (Роутер)
+  mongos:
+    image: mongo:latest
+    container_name: mongos
+    # Важно: указываем имя реплика-сета конфиг-сервера
+    command: mongos --configdb configrs/configdb:27019 --bind_ip_all --port 27017
+    ports:
+      - "27017:27017"
+    depends_on:
+      - configdb
+      - shard1
+      - shard2
+
+  # 5. API
+  pymongo_api:
+    container_name: pymongo_api
+    build:
+      context: ../api_app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Важно: к mongos подключаемся БЕЗ параметра replicaSet
+      MONGODB_URL: "mongodb://mongos:27017"
+      MONGODB_DATABASE_NAME: "somedb"
+    depends_on:
+      - mongos
+
+volumes:
+  configdb_data:
+  shard1_data:
+  shard2_data:

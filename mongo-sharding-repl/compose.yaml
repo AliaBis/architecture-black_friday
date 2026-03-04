@@ -1,0 +1,94 @@
+version: '3.8'
+
+name: mongo-sharding-repl
+
+services:
+  # 1. Config Server Replica Set (должен остаться Replica Set)
+  configdb:
+    image: mongo:latest
+    container_name: configdb
+    command: mongod --configsvr --replSet configrs --port 27019 --bind_ip_all
+    volumes:
+      - configdb_data:/data/db
+
+  # 2. Шард 1 - Replica Set из 3 узлов
+  shard1a: # Первый узел первого шарда
+    image: mongo:latest
+    container_name: shard1a
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1a_data:/data/db
+
+  shard1b: # Второй узел первого шарда
+    image: mongo:latest
+    container_name: shard1b
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1b_data:/data/db
+
+  shard1c: # Третий узел первого шарда
+    image: mongo:latest
+    container_name: shard1c
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1c_data:/data/db
+
+  # 3. Шард 2 - Replica Set из 3 узлов
+  shard2a: # Первый узел второго шарда
+    image: mongo:latest
+    container_name: shard2a
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2a_data:/data/db
+
+  shard2b: # Второй узел второго шарда
+    image: mongo:latest
+    container_name: shard2b
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2b_data:/data/db
+
+  shard2c: # Третий узел второго шарда
+    image: mongo:latest
+    container_name: shard2c
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2c_data:/data/db
+
+  # 4. Mongos (Роутер) - не меняется, подключается к Config Server
+  mongos:
+    image: mongo:latest
+    container_name: mongos
+    command: mongos --configdb configrs/configdb:27019 --bind_ip_all --port 27017
+    ports:
+      - "27017:27017"
+    depends_on:
+      - configdb
+      - shard1a # Зависимость от всех узлов шард-реплик
+      - shard1b
+      - shard1c
+      - shard2a
+      - shard2b
+      - shard2c
+
+  # 5. API - не меняется, подключается к Mongos
+  pymongo_api:
+    container_name: pymongo_api
+    build:
+      context: ../api_app # Путь к папке с Dockerfile API
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URL: "mongodb://mongos:27017"
+      MONGODB_DATABASE_NAME: "somedb"
+    depends_on:
+      - mongos
+
+volumes:
+  configdb_data:
+  shard1a_data:
+  shard1b_data:
+  shard1c_data:
+  shard2a_data:
+  shard2b_data:
+  shard2c_data:
