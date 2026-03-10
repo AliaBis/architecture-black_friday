@@ -1,119 +1,121 @@
-        version: '3.8'
-        name: gateway-discovery
-        services:
-          configdb:
-            image: mongo:latest
-            container_name: configdb
-            command: mongod --configsvr --replSet configrs --port 27019 --bind_ip_all
-            volumes:
-              - configdb_data:/data/db
+version: '3.8'
+name: gateway-discovery
 
-          consul:
-            image: hashicorp/consul:latest
-            container_name: consul
-            command: agent -server -bootstrap-expect=1 -ui -bind=0.0.0.0 -client=0.0.0.0
-            ports:
-              - "8500:8500"
-          mongos:
-            image: mongo:latest
-            container_name: mongos
-            command: mongos --configdb configrs/configdb:27019 --bind_ip_all --port 27017
-            ports:
-              - "27017:27017"
-            depends_on:
-              - configdb
-              - shard1a
-              - shard1b
-              - shard1c
-              - shard2a
-              - shard2b
-              - shard2c
-          gateway:
-            image: nginx:latest
-            container_name: gateway
-            volumes:
-              - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-            ports:
-              - "80:80"
-            depends_on:
-              - pymongo_api_1
-              - pymongo_api_2
-          pymongo_api_1:
-            container_name: pymongo_api_1
-            build:
-              context: ../api_app
-              dockerfile: Dockerfile
-            environment:
-              MONGODB_URL: "mongodb://mongos:27017"
-              MONGODB_DATABASE_NAME: "somedb"
-              REDIS_URL: "redis://redis:6379"
-            depends_on:
-              - mongos
-              - redis
-          pymongo_api_2:
-            container_name: pymongo_api_2
-            build:
-              context: ../api_app
-              dockerfile: Dockerfile
-            environment:
-              MONGODB_URL: "mongodb://mongos:27017"
-              MONGODB_DATABASE_NAME: "somedb"
-              REDIS_URL: "redis://redis:6379"
-            depends_on:
-              - mongos
-              - redis
-          redis:
-            image: redis:latest
-            container_name: redis
-            ports:
-              - "6379:6379"
-            volumes:
-              - redis_data:/data
-          shard1a:
-            image: mongo:latest
-            container_name: shard1a
-            command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
-            volumes:
-              - shard1a_data:/data/db
-          shard1b:
-            image: mongo:latest
-            container_name: shard1b
-            command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
-            volumes:
-              - shard1b_data:/data/db
-          shard1c:
-            image: mongo:latest
-            container_name: shard1c
-            command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
-            volumes:
-              - shard1c_data:/data/db
+services:
+  configdb:
+    image: mongo:latest
+    container_name: configdb
+    command: mongod --configsvr --replSet configrs --port 27019 --bind_ip_all
+    volumes:
+      - configdb_data:/data/db
 
-          shard2a:
-            image: mongo:latest
-            container_name: shard2a
-            command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
-            volumes:
-              - shard2a_data:/data/db
-          shard2b:
-            image: mongo:latest
-            container_name: shard2b
-            command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
-            volumes:
-              - shard2b_data:/data/db
-          shard2c:
-            image: mongo:latest
-            container_name: shard2c
-            command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
-            volumes:
-              - shard2c_data:/data/db
+  consul:
+    image: hashicorp/consul:latest
+    container_name: consul
+    command: agent -server -bootstrap-expect=1 -ui -bind=0.0.0.0 -client=0.0.0.0
+    ports:
+      - "8500:8500"
 
-        volumes:
-          configdb_data:
-          shard1a_data:
-          shard1b_data:
-          shard1c_data:
-          shard2a_data:
-          shard2b_data:
-          shard2c_data:
-          redis_data:
+  mongos:
+    image: mongo:latest
+    container_name: mongos
+    command: mongos --configdb configrs/configdb:27019 --bind_ip_all --port 27017
+    ports:
+      - "27017:27017"
+    depends_on:
+      - configdb
+      - shard1a
+      - shard2a
 
+  gateway:
+    image: nginx:latest
+    container_name: gateway
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - pymongo_api_1
+      - pymongo_api_2
+
+  pymongo_api_1:
+    container_name: pymongo_api_1
+    image: kazhem/pymongo_api:1.0.0 
+    environment:
+      MONGODB_URL: "mongodb://mongos:27017"
+      MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - mongos
+      - redis
+
+  pymongo_api_2:
+    container_name: pymongo_api_2
+    image: kazhem/pymongo_api:1.0.0 
+    environment:
+      MONGODB_URL: "mongodb://mongos:27017"
+      MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis:6379"
+    depends_on:
+      - mongos
+      - redis
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  shard1a:
+    image: mongo:latest
+    container_name: shard1a
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1a_data:/data/db
+
+  shard1b:
+    image: mongo:latest
+    container_name: shard1b
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1b_data:/data/db
+
+  shard1c:
+    image: mongo:latest
+    container_name: shard1c
+    command: mongod --shardsvr --replSet shard1rs --port 27018 --bind_ip_all
+    volumes:
+      - shard1c_data:/data/db
+
+  shard2a:
+    image: mongo:latest
+    container_name: shard2a
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2a_data:/data/db
+
+  shard2b:
+    image: mongo:latest
+    container_name: shard2b
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2b_data:/data/db
+
+  shard2c:
+    image: mongo:latest
+    container_name: shard2c
+    command: mongod --shardsvr --replSet shard2rs --port 27018 --bind_ip_all
+    volumes:
+      - shard2c_data:/data/db
+
+volumes:
+  configdb_data:
+  shard1a_data:
+  shard1b_data:
+  shard1c_data:
+  shard2a_data:
+  shard2b_data:
+  shard2c_data:
+  redis_data:
