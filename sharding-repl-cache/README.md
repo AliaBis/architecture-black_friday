@@ -46,8 +46,8 @@ docker compose exec shard2a mongosh --port 27018 --eval "
 ### Подключение шардов к mongos
 ```
 docker compose exec mongos mongosh --port 27017 --eval "
-sh.addShard('shard1rs/shard1:27018');
-sh.addShard('shard2rs/shard2:27018');
+sh.addShard('shard1rs/shard1a:27018');
+sh.addShard('shard2rs/shard2a:27018');
 sh.enableSharding('somedb');
 sh.shardCollection('somedb.users', { name: 'hashed' });
 "
